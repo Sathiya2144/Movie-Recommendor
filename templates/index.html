@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Media Recommender</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Media Recommender</h1>
+        
+        <!-- Upload Watchlist Section -->
+        <div class="upload-section">
+            <h2>Upload Your Watchlist</h2>
+            <form id="uploadForm" enctype="multipart/form-data">
+                <input type="file" id="fileInput" name="file" accept=".csv">
+                <button type="submit">Upload</button>
+            </form>
+        </div>
+
+        <!-- Search Keywords Section -->
+        <div class="search-section">
+            <h2>Search by Keywords</h2>
+            <form id="searchForm">
+                <input type="text" id="keywords" name="keywords" placeholder="Enter keywords (e.g., 'sci-fi 2020')">
+                <label for="mediaType">Search:</label>
+                <select id="mediaType" name="media_type">
+                    <option value="multi">Movies & TV Shows</option>
+                    <option value="movie">Movies Only</option>
+                    <option value="tv">TV Shows Only</option>
+                </select>
+                <label for="adultFilter">Hide NSFW</label>
+                <input type="checkbox" id="adultFilter" name="adult_filter">
+                <button type="submit">Search</button>
+                <span id="searchStatus" class="search-status"></span>
+            </form>
+        </div>
+
+        <!-- Recommendations Table -->
+        <div class="recommendations-section">
+            <h2>Recommendations</h2>
+            <div class="table-container">
+                <table id="recommendationsTable">
+                    <thead>
+                        <tr>
+                            <th>Poster</th>
+                            <th>Title</th>
+                            <th>Type</th>
+                            <th>Genres</th>
+                            <th>Rating</th>
+                            <th>User Rating</th>
+                            <th>Release Date</th>
+                            <th>Overview</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recommendationsBody">
+                        <!-- Recommendations will be populated here via JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Details Modal -->
+        <div id="detailsModal" class="modal">
+            <div class="modal-content">
+                <span class="close">×</span>
+                <div id="detailsContent"></div>
+                <div class="section">
+                    <h2>Add Your Review</h2>
+                    <form id="reviewForm">
+                        <label for="userName">Your Name (Optional):</label>
+                        <input type="text" id="userName" name="name" placeholder="Enter your name">
+                        <label for="userRating">Rating (1-10):</label>
+                        <input type="number" id="userRating" name="rating" min="1" max="10" required>
+                        <label for="userReview">Review:</label>
+                        <textarea id="userReview" name="review" rows="4" placeholder="Write your review..." required></textarea>
+                        <button type="submit">Submit Review</button>
+                    </form>
+                    <div id="userReviews"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Cache for offline viewing
+        const CACHE_NAME = 'media-recommender-cache-v1';
+        const CACHE_URLS = ['/'];
+
+        async function initCache() {
+            try {
+                if ('caches' in window) {
+                    const cache = await caches.open(CACHE_NAME);
+                    await cache.addAll(CACHE_URLS);
+                } else {
+                    console.warn('Cache API not supported, skipping cache initialization');
+                }
+            } catch (error) {
+                console.error('Cache initialization failed:', error);
+            }
+        }
+
+        window.addEventListener('load', initCache);
+
+        // Handle Watchlist Upload
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+                if (response.ok && result.recommendations) {
+                    displayRecommendations(result.recommendations);
+                } else {
+                    alert(result.error || 'Error uploading file');
+                }
+            } catch (error) {
+                alert('Error uploading file: ' + error.message);
+            }
+        });
+
+        // Function to handle search
+        async function performSearch() {
+            const keywords = document.getElementById('keywords').value;
+            const mediaType = document.getElementById('mediaType').value;
+            const adultFilter = document.getElementById('adultFilter').checked;
+            const searchStatus = document.getElementById('searchStatus');
+            
+            if (!keywords.trim()) {
+                alert('Please enter keywords to search');
+                return;
+            }
+
+            searchStatus.textContent = 'Searching...';
+            try {
+                const response = await fetch('/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ keywords, media_type: mediaType, adult_filter: adultFilter })
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    if (result.recommendations && Array.isArray(result.recommendations)) {
+                        displayRecommendations(result.recommendations);
+                    } else {
+                        alert(result.error || 'No recommendations found');
+                    }
+                } else {
+                    alert(result.error || 'Search failed');
+                }
+            } catch (error) {
+                alert('Error searching: ' + error.message);
+            } finally {
+                searchStatus.textContent = '';
+            }
+        }
+
+        // Handle Keyword Search via Button
+        document.getElementById('searchForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await performSearch();
+        });
+
+        // Handle Keyword Search via Enter Key
+        document.getElementById('keywords').addEventListener('keypress', async (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                await performSearch();
+            }
+        });
+
+        // Display Recommendations in Table
+        async function displayRecommendations(recommendations) {
+            const tbody = document.getElementById('recommendationsBody');
+            tbody.style.opacity = '0';
+            setTimeout(async () => {
+                tbody.innerHTML = '';
+                for (const media of recommendations) {
+                    const overview = media.overview || 'No overview available';
+                    const truncatedOverview = overview.length > 100 ? overview.substring(0, 100) + '...' : overview;
+                    const userRating = await getUserRating(media.id, media.type || 'movie');
+                    const row = document.createElement('tr');
+                    row.dataset.mediaId = media.id;
+                    row.dataset.mediaType = media.type || 'movie';
+                    row.innerHTML = `
+                        <td><img src="${media.poster_url || 'https://via.placeholder.com/185'}" alt="${media.title}" class="poster" onerror="this.src='https://via.placeholder.com/185';"></td>
+                        <td>${media.title || 'N/A'}</td>
+                        <td>${media.type || 'N/A'}</td>
+                        <td>${media.genres || 'N/A'}</td>
+                        <td>${media.rating || 'N/A'}</td>
+                        <td>${userRating || 'N/A'}</td>
+                        <td>${media.release_date || 'N/A'}</td>
+                        <td>
+                            <span class="overview-text">${truncatedOverview}</span>
+                            ${overview.length > 100 ? '<button class="read-more">Read More</button>' : ''}
+                        </td>
+                    `;
+                    row.addEventListener('click', (e) => {
+                        if (!e.target.classList.contains('read-more')) {
+                            showMediaDetails(media.id, media.type || 'movie');
+                        }
+                    });
+                    tbody.appendChild(row);
+                }
+
+                tbody.style.transition = 'opacity 0.3s ease';
+                tbody.style.opacity = '1';
+
+                const readMoreButtons = tbody.querySelectorAll('.read-more');
+                readMoreButtons.forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const overviewSpan = btn.previousElementSibling;
+                        const fullText = recommendations.find(m => m.id === parseInt(btn.closest('tr').dataset.mediaId)).overview || 'No overview available';
+                        const truncatedText = fullText.length > 100 ? fullText.substring(0, 100) + '...' : fullText;
+                        if (btn.textContent == 'Read More') {
+                            overviewSpan.textContent = fullText;
+                            btn.textContent = 'Read Less';
+                        } else {
+                            overviewSpan.textContent = truncatedText;
+                            btn.textContent = 'Read More';
+                        }
+                    });
+                });
+            }, 300);
+        }
+
+        // Get user rating for a media item
+        async function getUserRating(mediaId, mediaType) {
+            try {
+                const response = await fetch(`/reviews/${mediaType}/${mediaId}`);
+                const reviews = await response.json();
+                if (response.ok && reviews.length > 0) {
+                    const avgRating = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
+                    return avgRating.toFixed(1);
+                }
+                return null;
+            } catch (error) {
+                console.error('Error fetching user rating:', error);
+                return null;
+            }
+        }
+
+        // Show Media Details in Modal
+        async function showMediaDetails(mediaId, mediaType) {
+            try {
+                let details;
+                const cacheKey = `/media/${mediaType}/${mediaId}`;
+
+                // Check if Cache API is supported
+                if ('caches' in window) {
+                    const cache = await caches.open(CACHE_NAME);
+                    const cachedResponse = await cache.match(cacheKey);
+
+                    if (cachedResponse) {
+                        details = await cachedResponse.json();
+                        console.log('Loaded from cache:', cacheKey);
+                    }
+                }
+
+                // If no cache or Cache API not supported, fetch from server
+                if (!details) {
+                    const response = await fetch(`/media/${mediaType}/${mediaId}`);
+                    details = await response.json();
+                    if (!response.ok) {
+                        throw new Error(details.error || 'Failed to load media details');
+                    }
+
+                    // Cache the response if Cache API is supported
+                    if ('caches' in window) {
+                        const cache = await caches.open(CACHE_NAME);
+                        const cacheResponse = new Response(JSON.stringify(details), {
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                        await cache.put(cacheKey, cacheResponse);
+                    }
+                }
+
+                const modal = document.getElementById('detailsModal');
+                const content = document.getElementById('detailsContent');
+                const cast = details.credits?.cast.slice(0, 5).map(c => `
+                    <div class="cast-item">
+                        <img src="https://image.tmdb.org/t/p/w92${c.profile_path || ''}" alt="${c.name}" onerror="this.src='https://via.placeholder.com/92';">
+                        <span>${c.name} as ${c.character}</span>
+                    </div>
+                `).join('') || 'N/A';
+                const director = details.credits?.crew.find(c => c.job === 'Director')?.name || 'N/A';
+                const production = details.production_companies?.map(p => p.name).join(', ') || 'N/A';
+                const userRating = await getUserRating(mediaId, mediaType);
+                content.innerHTML = `
+                    <h1>${details.title || details.name || 'N/A'}</h1>
+                    <img src="https://image.tmdb.org/t/p/w500${details.poster_path || ''}" alt="${details.title || details.name || 'Poster'}" class="large-poster" onerror="this.src='https://via.placeholder.com/500';">
+                    <div class="section">
+                        <p><strong>Type:</strong> ${mediaType === 'movie' ? 'Movie' : 'TV Show'}</p>
+                        <p><strong>Genres:</strong> ${details.genres ? details.genres.map(g => g.name).join(', ') : 'N/A'}</p>
+                        <p><strong>Rating:</strong> ${details.vote_average || 'N/A'}</p>
+                        <p id="userRatingAvg"><strong>User Rating Average:</strong> ${userRating || 'N/A'}</p>
+                        <p><strong>Release Date:</strong> ${details.release_date || details.first_air_date || 'N/A'}</p>
+                        <p><strong>Overview:</strong> ${details.overview || 'No overview available'}</p>
+                    </div>
+                    <div class="section">
+                        <h2>Cast</h2>
+                        ${cast}
+                    </div>
+                    <div class="section">
+                        <p><strong>Director:</strong> ${director}</p>
+                        <p><strong>Production Companies:</strong> ${production}</p>
+                    </div>
+                    ${mediaType === 'tv' ? `
+                    <div class="section">
+                        <p><strong>Number of Seasons:</strong> ${details.number_of_seasons || 'N/A'}</p>
+                        <p><strong>Number of Episodes:</strong> ${details.number_of_episodes || 'N/A'}</p>
+                    </div>` : `
+                    <div class="section">
+                        <p><strong>Runtime:</strong> ${details.runtime ? details.runtime + ' minutes' : 'N/A'}</p>
+                        <p><strong>Budget:</strong> ${details.budget ? '$' + details.budget.toLocaleString() : 'N/A'}</p>
+                        <p><strong>Revenue:</strong> ${details.revenue ? '$' + details.revenue.toLocaleString() : 'N/A'}</p>
+                    </div>`}
+                `;
+                modal.style.display = 'block';
+
+                // Load user reviews
+                await loadUserReviews(mediaId, mediaType);
+
+                // Handle review submission
+                const reviewForm = document.getElementById('reviewForm');
+                reviewForm.dataset.mediaId = mediaId;
+                reviewForm.dataset.mediaType = mediaType;
+                reviewForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const name = document.getElementById('userName').value.trim() || 'Anonymous';
+                    const rating = parseInt(document.getElementById('userRating').value);
+                    const review = document.getElementById('userReview').value;
+                    try {
+                        const response = await fetch(`/reviews/${mediaType}/${mediaId}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ name, rating, review })
+                        });
+                        if (response.ok) {
+                            alert('Review submitted successfully!');
+                            reviewForm.reset();
+                            await loadUserReviews(mediaId, mediaType);
+                            // Refresh user rating in details
+                            const newUserRating = await getUserRating(mediaId, mediaType);
+                            const userRatingElement = content.querySelector('#userRatingAvg');
+                            if (userRatingElement) {
+                                userRatingElement.textContent = `User Rating Average: ${newUserRating || 'N/A'}`;
+                            }
+                            // Refresh recommendations to update user rating column
+                            const searchForm = document.getElementById('searchForm');
+                            if (searchForm.querySelector('#keywords').value) {
+                                await performSearch();
+                            }
+                        } else {
+                            const result = await response.json();
+                            alert(result.error || 'Failed to submit review');
+                        }
+                    } catch (error) {
+                        alert('Error submitting review: ' + error.message);
+                    }
+                });
+            } catch (error) {
+                alert('Error fetching media details: ' + error.message);
+            }
+        }
+
+        // Load user reviews
+        async function loadUserReviews(mediaId, mediaType) {
+            try {
+                const response = await fetch(`/reviews/${mediaType}/${mediaId}`);
+                const reviews = await response.json();
+                const reviewsContainer = document.getElementById('userReviews');
+                if (reviews.length > 0) {
+                    reviewsContainer.innerHTML = '<h2>User Reviews</h2>' + reviews.map(r => `
+                        <div class="review-item">
+                            <p><strong>${r.name || 'Anonymous'}:</strong> ${r.rating}/10</p>
+                            <p>${r.review}</p>
+                        </div>
+                    `).join('');
+                } else {
+                    reviewsContainer.innerHTML = '<p>No user reviews yet.</p>';
+                }
+            } catch (error) {
+                console.error('Error loading reviews:', error);
+            }
+        }
+
+        // Modal Close Functionality
+        document.querySelector('.close').addEventListener('click', () => {
+            document.getElementById('detailsModal').style.display = 'none';
+        });
+
+        window.addEventListener('click', (event) => {
+            const modal = document.getElementById('detailsModal');
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

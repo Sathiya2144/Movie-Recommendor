@@ -1,0 +1,363 @@
+/* General Styles */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #032541;
+    color: #ffffff;
+    margin: 0;
+    padding: 20px;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+h1, h2 , p{
+    color: #01d277;
+    text-align: center;
+}
+
+/* Upload Section */
+.upload-section {
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.upload-section form {
+    display: inline-block;
+    background: #0d3446;
+    padding: 10px;
+    border-radius: 8px;
+}
+
+.upload-section input[type="file"] {
+    display: block;
+    margin: 10px auto;
+    color: #fff;
+}
+
+.upload-section button {
+    background-color: #01d277;
+    border: none;
+    padding: 8px 16px;
+    color: #fff;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.upload-section button:hover {
+    background-color: #00b359;
+}
+
+/* Search Section */
+.search-section {
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.search-section form {
+    display: inline-flex;
+    align-items: center;
+    background: #0d3446;
+    padding: 10px;
+    border-radius: 8px;
+}
+
+.search-section input[type="text"] {
+    padding: 8px;
+    font-size: 14px;
+    border: none;
+    border-radius: 5px;
+    margin-right: 10px;
+    width: 250px;
+    background: #fff;
+    color: #333;
+}
+
+.search-section select {
+    padding: 8px;
+    font-size: 14px;
+    border: none;
+    border-radius: 5px;
+    margin-right: 10px;
+    background: #fff;
+    color: #333;
+}
+
+.search-section label {
+    margin-right: 8px;
+    color: #fff;
+}
+
+.search-section input[type="checkbox"] {
+    margin-right: 8px;
+}
+
+.search-section button {
+    background-color: #01d277;
+    border: none;
+    padding: 8px 16px;
+    color: #fff;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.search-section button:hover {
+    background-color: #00b359;
+}
+
+.search-status {
+    margin-left: 10px;
+    font-size: 12px;
+    color: #01d277;
+}
+
+/* Recommendations Section */
+.recommendations-section {
+    margin-bottom: 20px;
+}
+
+.table-container {
+    background: #0d3446;
+    padding: 10px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    color: #333;
+}
+
+th, td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+    vertical-align: middle;
+}
+
+th {
+    background-color: #01d277;
+    color: #fff;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+tr {
+    height: 50px;
+    transition: background-color 0.2s ease;
+}
+
+tr:hover {
+    background-color: #f5f5f5;
+    cursor: pointer;
+}
+
+.poster {
+    width: 100px;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 5px;
+    display: block;
+}
+
+td:nth-child(5) {
+    font-weight: bold;
+    color: #e50914;
+}
+
+td:nth-child(6) {
+    font-weight: bold;
+    color: #01d277;
+}
+
+.overview-text {
+    display: inline;
+    max-width: 300px;
+    word-wrap: break-word;
+}
+
+.read-more {
+    background: none;
+    border: none;
+    color: #01d277;
+    cursor: pointer;
+    font-size: 12px;
+    margin-left: 5px;
+    padding: 0;
+    text-decoration: underline;
+    vertical-align: middle;
+}
+
+.read-more:hover {
+    color: #00b359;
+}
+
+/* Modal Styles */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    z-index: 1000;
+    overflow-y: auto;
+}
+
+.modal-content {
+    background-color: #032541;
+    margin: 5% auto;
+    padding: 20px;
+    border-radius: 8px;
+    width: 80%;
+    max-width: 600px;
+    color: #fff;
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from { transform: translateY(-100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.close {
+    color: #fff;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close:hover {
+    color: #01d277;
+}
+
+.large-poster {
+    width: 100%;
+    max-width: 300px;
+    border-radius: 8px;
+    margin: 10px 0;
+}
+
+.section {
+    margin: 15px 0;
+}
+
+.cast-item {
+    display: flex;
+    align-items: center;
+    margin: 10px 0;
+}
+
+.cast-item img {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    margin-right: 10px;
+}
+
+.cast-item span {
+    font-size: 14px;
+}
+
+/* Review Form Styles */
+#reviewForm {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+#reviewForm label {
+    font-size: 14px;
+}
+
+#reviewForm input[type="number"] {
+    padding: 8px;
+    font-size: 14px;
+    border: none;
+    border-radius: 5px;
+    background: #fff;
+    color: #333;
+    width: 100px;
+}
+
+#reviewForm textarea {
+    padding: 8px;
+    font-size: 14px;
+    border: none;
+    border-radius: 5px;
+    background: #fff;
+    color: #333;
+    resize: vertical;
+}
+
+#reviewForm button {
+    background-color: #01d277;
+    border: none;
+    padding: 8px 16px;
+    color: #fff;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    align-self: flex-start;
+}
+
+#reviewForm button:hover {
+    background-color: #00b359;
+}
+
+.review-item {
+    background: #0d3446;
+    padding: 10px;
+    border-radius: 5px;
+    margin-top: 10px;
+}
+
+.review-item p {
+    margin: 5px 0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .search-section form {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .search-section input[type="text"], .search-section select {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+
+    .search-section label, .search-section button {
+        margin: 5px 0;
+    }
+
+    table {
+        font-size: 12px;
+    }
+
+    .poster {
+        width: 80px;
+        height: 120px;
+    }
+
+    tr {
+        height: 140px;
+    }
+
+    .overview-text {
+        max-width: 200px;
+    }
+
+    .modal-content {
+        width: 90%;
+    }
+}
