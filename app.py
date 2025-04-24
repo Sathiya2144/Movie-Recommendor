@@ -15,6 +15,7 @@ import threading
 import atexit
 import sqlite3
 from cachetools import TTLCache
+import os
 
 # Setup logging
 logging.basicConfig(level=logging.DEBUG)
@@ -484,7 +485,5 @@ def cleanup():
 atexit.register(cleanup)
 
 if __name__ == '__main__':
-    try:
-        app.run(host='0.0.0.0', port=3000, debug=True, use_reloader=False)
-    finally:
-        cleanup()
+    port = int(os.getenv("PORT", 5000))  # Render sets PORT environment variable
+    app.run(host='0.0.0.0', port=port, debug=True)
